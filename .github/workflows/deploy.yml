@@ -1,0 +1,36 @@
+# Deploys the plugin to WordPress.org SVN when a version tag is pushed.
+# Usage: bump "Version:" in lukstack-uptime-monitor.php and "Stable tag:" in readme.txt,
+# commit, then: git tag 2.4.1 && git push origin master --tags
+
+name: Deploy to WordPress.org
+
+on:
+  push:
+    tags:
+      - "*"
+
+jobs:
+  deploy:
+    name: Deploy release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check that tag matches plugin version
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          HEADER=$(grep -m1 -E "^\s*\*\s*Version:" lukstack-uptime-monitor.php | awk '{print $NF}')
+          STABLE=$(grep -m1 -E "^Stable tag:" readme.txt | awk '{print $NF}')
+          echo "Tag: $TAG | Header: $HEADER | Stable tag: $STABLE"
+          if [ "$TAG" != "$HEADER" ] || [ "$TAG" != "$STABLE" ]; then
+            echo "::error::Tag, plugin header and readme Stable tag must all match."
+            exit 1
+          fi
+
+      - name: Deploy to WordPress.org
+        uses: 10up/action-wordpress-plugin-deploy@stable
+        env:
+          SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
+          SLUG: lukstack-uptime-monitor

@@ -1,6 +1,6 @@
 <?php
 /**
- * Main page view template with improved UI and security
+ * Main page view template with improved UI, security, and plan gating
  *
  * @package LukStack_Uptime_Monitor
  * @since   2.0.0
@@ -9,6 +9,16 @@
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
+
+$lukstack_can_performance = lukstack_can_use_performance_tracking();
+$lukstack_can_ssl         = lukstack_can_use_ssl_monitoring();
+$lukstack_can_add         = lukstack_can_add_site();
+$lukstack_col_count       = 6; // URL, Status, SSL, Uptime, Last Checked, Actions
+if ( $lukstack_can_performance ) {
+	$lukstack_col_count++;
+}
+// Notify Email column (hide-tablet but still counted)
+$lukstack_col_count++;
 ?>
 
 <div class="wrap lukstack-wrap">
@@ -30,15 +40,21 @@ if ( ! defined( 'ABSPATH' ) ) {
 	<?php endif; ?>
 
 	<?php
-	// Display cron warning if WP Cron is disabled.
-	if ( defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON ) :
+	// Display cron warning only if BOTH the remote cron server is not registered
+	// AND WordPress Cron is disabled. If either trigger mechanism is working,
+	// monitoring runs fine.
+	$lukstack_reg           = function_exists( 'lukstack_get_registration_status' ) ? lukstack_get_registration_status() : array();
+	$lukstack_is_registered = isset( $lukstack_reg['status'] ) && 'registered' === $lukstack_reg['status'];
+	$lukstack_wp_cron_off   = defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON;
+
+	if ( ! $lukstack_is_registered && $lukstack_wp_cron_off ) :
 		?>
 		<div class="notice notice-warning">
 			<p>
 				<strong><?php esc_html_e( 'Warning:', 'lukstack-uptime-monitor' ); ?></strong>
-				<?php esc_html_e( 'WordPress Cron is disabled on this site. Automatic monitoring checks will not run.', 'lukstack-uptime-monitor' ); ?>
-				<a href="<?php echo esc_url( admin_url( 'admin.php?page=lukstack-uptime-monitor-help#cron-issues' ) ); ?>">
-					<?php esc_html_e( 'Learn how to fix this', 'lukstack-uptime-monitor' ); ?>
+				<?php esc_html_e( 'The LukStack remote cron server is not registered and WordPress Cron is disabled on this site. Automatic monitoring checks will not run until one of these trigger mechanisms is restored.', 'lukstack-uptime-monitor' ); ?>
+				<a href="<?php echo esc_url( lukstack_admin_url( 'settings' ) ); ?>">
+					<?php esc_html_e( 'Open settings to re-register', 'lukstack-uptime-monitor' ); ?>
 				</a>
 			</p>
 		</div>
@@ -66,7 +82,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 				</div>
 			</div>
 
-			<?php if ( $stats['ssl_expiring_soon'] > 0 ) : ?>
+			<?php if ( $lukstack_can_ssl && $stats['ssl_expiring_soon'] > 0 ) : ?>
 				<div class="lukstack-stat-card stat-warning">
 					<h3><?php esc_html_e( 'SSL Expiring', 'lukstack-uptime-monitor' ); ?></h3>
 					<div class="stat-value">
@@ -79,6 +95,44 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 	<!-- Add Website Form -->
 	<h2><?php esc_html_e( 'Add Website', 'lukstack-uptime-monitor' ); ?></h2>
+
+	<!-- Plan Info Bar -->
+	<div class="lukstack-plan-info">
+		<?php
+		printf(
+			/* translators: %1$s: plan name, %2$d: current site count, %3$d: site limit */
+			esc_html__( 'Plan: %1$s | Sites: %2$d / %3$d', 'lukstack-uptime-monitor' ),
+			esc_html( lukstack_get_current_plan_name() ),
+			intval( lukstack_get_site_count() ),
+			intval( lukstack_get_site_limit() )
+		);
+		if ( ! lukstack_is_paid_plan() ) {
+			printf(
+				' | <a href="%s">%s</a>',
+				esc_url( lukstack_get_upgrade_url() ),
+				esc_html__( 'Upgrade to Pro', 'lukstack-uptime-monitor' )
+			);
+		}
+		?>
+	</div>
+
+	<?php if ( ! $lukstack_can_add ) : ?>
+		<div class="notice notice-warning" style="margin-bottom: 16px;">
+			<p>
+				<?php
+				printf(
+					/* translators: %d: site limit */
+					esc_html__( 'You have reached the limit of %d websites on the Free plan.', 'lukstack-uptime-monitor' ),
+					lukstack_get_site_limit()
+				);
+				?>
+				<a href="<?php echo esc_url( lukstack_get_upgrade_url() ); ?>" class="button button-primary" style="margin-left: 10px;">
+					<?php esc_html_e( 'Upgrade to Pro', 'lukstack-uptime-monitor' ); ?>
+				</a>
+			</p>
+		</div>
+	<?php endif; ?>
+
 	<form method="post" id="lukstack-add-form" class="lukstack-form" action="">
 		<?php wp_nonce_field( 'lukstack_add_site' ); ?>
 		<input type="hidden" name="lukstack_action" value="add_site">
@@ -93,6 +147,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 				placeholder="https://example.com"
 				class="regular-text"
 				value=""
+				<?php disabled( ! $lukstack_can_add ); ?>
 			>
 
 			<label for="lukstack_email" class="screen-reader-text"><?php esc_html_e( 'Notification email', 'lukstack-uptime-monitor' ); ?></label>
@@ -103,9 +158,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 				placeholder="<?php esc_attr_e( 'alert@email.com (optional)', 'lukstack-uptime-monitor' ); ?>"
 				class="regular-text"
 				value=""
+				<?php disabled( ! $lukstack_can_add ); ?>
 			>
 
-			<button class="button button-primary" name="add_site" type="submit" value="1">
+			<button class="button button-primary" name="add_site" type="submit" value="1" <?php disabled( ! $lukstack_can_add ); ?>>
 				<?php esc_html_e( 'Add Website', 'lukstack-uptime-monitor' ); ?>
 			</button>
 		</div>
@@ -140,12 +196,22 @@ if ( ! defined( 'ABSPATH' ) ) {
 		<?php endif; ?>
 	</div>
 
-	<?php if ( ! empty( $cron_status ) && $cron_status['is_scheduled'] ) : ?>
+	<?php if ( $lukstack_is_registered ) : ?>
+		<p class="description lukstack-cron-info">
+			<?php
+			printf(
+				/* translators: %d: plan check interval in minutes */
+				esc_html__( 'Automatic checks run every %d minutes via the LukStack remote cron server.', 'lukstack-uptime-monitor' ),
+				intval( lukstack_get_plan_check_interval() )
+			);
+			?>
+		</p>
+	<?php elseif ( ! empty( $cron_status ) && $cron_status['is_scheduled'] ) : ?>
 		<p class="description lukstack-cron-info">
 			<?php
 			printf(
 				/* translators: %s: Date and time of next automatic check */
-				esc_html__( 'Next automatic check: %s', 'lukstack-uptime-monitor' ),
+				esc_html__( 'Next automatic check (WP Cron fallback): %s', 'lukstack-uptime-monitor' ),
 				'<strong>' . esc_html( $cron_status['next_run_formatted'] ) . '</strong>'
 			);
 			?>
@@ -158,8 +224,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 			<tr>
 				<th><?php esc_html_e( 'URL', 'lukstack-uptime-monitor' ); ?></th>
 				<th><?php esc_html_e( 'Status', 'lukstack-uptime-monitor' ); ?></th>
-				<th class="hide-tablet"><?php esc_html_e( 'Performance', 'lukstack-uptime-monitor' ); ?></th>
-				<th><?php esc_html_e( 'SSL Certificate', 'lukstack-uptime-monitor' ); ?></th>
+				<?php if ( $lukstack_can_performance ) : ?>
+					<th class="hide-tablet"><?php esc_html_e( 'Performance', 'lukstack-uptime-monitor' ); ?></th>
+				<?php endif; ?>
+				<?php if ( $lukstack_can_ssl ) : ?>
+					<th><?php esc_html_e( 'SSL Certificate', 'lukstack-uptime-monitor' ); ?></th>
+				<?php else : ?>
+					<th><?php esc_html_e( 'SSL Certificate', 'lukstack-uptime-monitor' ); ?> <span class="lukstack-pro-badge">PRO</span></th>
+				<?php endif; ?>
 				<th><?php esc_html_e( 'Uptime', 'lukstack-uptime-monitor' ); ?></th>
 				<th class="hide-tablet"><?php esc_html_e( 'Notify Email', 'lukstack-uptime-monitor' ); ?></th>
 				<th><?php esc_html_e( 'Last Checked', 'lukstack-uptime-monitor' ); ?></th>
@@ -186,19 +258,29 @@ if ( ! defined( 'ABSPATH' ) ) {
 							?>
 						</td>
 
-						<td class="response-time hide-tablet" data-label="<?php esc_attr_e( 'Performance', 'lukstack-uptime-monitor' ); ?>">
-							<?php
-							// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Render function returns escaped HTML.
-							echo lukstack_render_response_time( $lukstack_site->response_time );
-							?>
-						</td>
+						<?php if ( $lukstack_can_performance ) : ?>
+							<td class="response-time hide-tablet" data-label="<?php esc_attr_e( 'Performance', 'lukstack-uptime-monitor' ); ?>">
+								<?php
+								// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Render function returns escaped HTML.
+								echo lukstack_render_response_time( $lukstack_site->response_time );
+								?>
+							</td>
+						<?php endif; ?>
 
-						<td class="ssl-expiry" data-label="<?php esc_attr_e( 'SSL', 'lukstack-uptime-monitor' ); ?>">
-							<?php
-							// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Render function returns escaped HTML.
-							echo lukstack_render_ssl_expiry( $lukstack_site->ssl_days_remaining, $lukstack_site->ssl_expiry_date );
-							?>
-						</td>
+						<?php if ( $lukstack_can_ssl ) : ?>
+							<td class="ssl-expiry" data-label="<?php esc_attr_e( 'SSL', 'lukstack-uptime-monitor' ); ?>">
+								<?php
+								// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Render function returns escaped HTML.
+								echo lukstack_render_ssl_expiry( $lukstack_site->ssl_days_remaining, $lukstack_site->ssl_expiry_date );
+								?>
+							</td>
+						<?php else : ?>
+							<td class="ssl-expiry" data-label="<?php esc_attr_e( 'SSL', 'lukstack-uptime-monitor' ); ?>">
+								<a href="<?php echo esc_url( lukstack_get_upgrade_url() ); ?>" title="<?php esc_attr_e( 'Upgrade to Pro for SSL monitoring', 'lukstack-uptime-monitor' ); ?>">
+									<span style="color: var(--gray-400);"><?php esc_html_e( 'Pro', 'lukstack-uptime-monitor' ); ?></span>
+								</a>
+							</td>
+						<?php endif; ?>
 
 						<td class="uptime" data-label="<?php esc_attr_e( 'Uptime', 'lukstack-uptime-monitor' ); ?>">
 							<?php
@@ -257,7 +339,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 				<?php endforeach; ?>
 			<?php else : ?>
 				<tr>
-					<td colspan="8" class="no-sites">
+					<td colspan="<?php echo intval( $lukstack_col_count ); ?>" class="no-sites">
 						<?php esc_html_e( 'No websites added yet. Add your first website above!', 'lukstack-uptime-monitor' ); ?>
 					</td>
 				</tr>
@@ -266,56 +348,3 @@ if ( ! defined( 'ABSPATH' ) ) {
 		</table>
 	</div>
 </div>
-
-<script>
-	jQuery( document ).ready( function( $ ) {
-		'use strict';
-
-		// Get translations from localized script.
-		var i18n = ( typeof LukStack !== 'undefined' && LukStack.i18n ) ? LukStack.i18n : {};
-
-		/**
-		 * Bulk check all sites.
-		 */
-		$( '.lukstack-bulk-check' ).on( 'click', function( e ) {
-			e.preventDefault();
-
-			var $btn = $( this );
-			var originalText = $btn.text();
-
-			if ( $btn.prop( 'disabled' ) ) {
-				return;
-			}
-
-			if ( ! confirm( i18n.confirmBulkCheck || 'Check all websites now? This may take a few minutes.' ) ) {
-				return;
-			}
-
-			$btn.prop( 'disabled', true ).text( i18n.checking || 'Checking...' );
-
-			$.ajax( {
-				url: LukStack.ajax_url,
-				type: 'POST',
-				data: {
-					action: 'lukstack_bulk_check',
-					nonce: LukStack.nonce
-				},
-				timeout: 120000, // 2 minutes.
-				success: function( response ) {
-					if ( response.success ) {
-						alert( response.data.message );
-						location.reload();
-					} else {
-						alert( ( i18n.error || 'Error' ) + ': ' + ( response.data.message || i18n.unknownError || 'Unknown error' ) );
-					}
-				},
-				error: function() {
-					alert( i18n.networkError || 'Network error. Please try again.' );
-				},
-				complete: function() {
-					$btn.prop( 'disabled', false ).text( originalText );
-				}
-			} );
-		} );
-	} );
-</script>

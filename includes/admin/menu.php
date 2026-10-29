@@ -78,6 +78,19 @@ function lukstack_enqueue_settings_assets() {
 		LUKSTACK_VERSION,
 		true
 	);
+
+	wp_localize_script( 'lukstack-settings', 'LukStackSettings', array(
+		'i18n' => array(
+			'sending'      => __( 'Sending...', 'lukstack-uptime-monitor' ),
+			'connecting'   => __( 'Connecting to webhook...', 'lukstack-uptime-monitor' ),
+			'success'      => __( 'Success!', 'lukstack-uptime-monitor' ),
+			'error'        => __( 'Error:', 'lukstack-uptime-monitor' ),
+			'unknownError' => __( 'Unknown error occurred', 'lukstack-uptime-monitor' ),
+			'networkError' => __( 'Network error. Please try again.', 'lukstack-uptime-monitor' ),
+			'timeoutError' => __( 'Request timeout. The webhook may be slow or unreachable.', 'lukstack-uptime-monitor' ),
+			'sendTest'     => __( 'Send Test Notification', 'lukstack-uptime-monitor' ),
+		),
+	) );
 }
 
 /**
@@ -117,35 +130,17 @@ function lukstack_enqueue_admin_assets() {
 			'timeout' => __('Request timeout - website may be slow or down', 'lukstack-uptime-monitor'),
 			'noSites' => __('No websites added yet. Add your first website above!', 'lukstack-uptime-monitor'),
 			'success' => __('Success!', 'lukstack-uptime-monitor'),
-			'error' => __('Error', 'lukstack-uptime-monitor')
+			'error' => __('Error', 'lukstack-uptime-monitor'),
+			'confirmBulkCheck' => __('Check all websites now? This may take a few minutes.', 'lukstack-uptime-monitor'),
+			'noConnection' => __('No connection - check your internet', 'lukstack-uptime-monitor'),
+			'serverError' => __('Server error - please try again', 'lukstack-uptime-monitor'),
+			'enterUrl' => __('Please enter a URL', 'lukstack-uptime-monitor'),
+			'invalidUrl' => __('URL must start with http:// or https://', 'lukstack-uptime-monitor'),
+			'invalidEmail' => __('Please enter a valid email address', 'lukstack-uptime-monitor'),
+			'urlCopied' => __('URL copied to clipboard!', 'lukstack-uptime-monitor'),
+			'copyFailed' => __('Could not copy URL', 'lukstack-uptime-monitor'),
 		)
 	));
-}
-
-/**
- * Add custom admin header
- */
-add_action('in_admin_header', 'lukstack_admin_header');
-
-function lukstack_admin_header() {
-	$screen = get_current_screen();
-
-	if (!$screen || strpos($screen->id, 'lukstack-uptime-monitor') === false) {
-		return;
-	}
-
-	// Don't show duplicate header
-	remove_all_actions('in_admin_header');
-}
-
-/**
- * Register admin AJAX actions
- */
-add_action('admin_init', 'lukstack_register_ajax_actions');
-
-function lukstack_register_ajax_actions() {
-	// These are registered in ajax-handlers.php
-	// This function exists for potential future use
 }
 
 /**

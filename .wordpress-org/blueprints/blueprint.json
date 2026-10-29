@@ -1,0 +1,24 @@
+{
+    "$schema": "https://playground.wordpress.net/blueprint-schema.json",
+    "preferredVersions": {
+        "php": "8.2",
+        "wp": "latest"
+    },
+    "login": {
+        "username": "admin",
+        "password": "password"
+    },
+    "landingPage": "/wp-admin/admin.php?page=lukstack-uptime-monitor",
+    "steps": [
+        {
+            "step": "installPlugin",
+            "pluginZipFile": {
+                "resource": "wordpress.org/plugins",
+                "slug": "lukstack-uptime-monitor"
+            },
+            "options": {
+                "activate": true
+            }
+        }
+    ]
+}

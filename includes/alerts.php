@@ -81,13 +81,13 @@ function lukstack_build_status_alert_email($site, $old_status, $new_status, $sev
 	$lines[] = sprintf(__('Current Status: %s', 'lukstack-uptime-monitor'), $new_status);
 	$lines[] = sprintf(__('Time: %s', 'lukstack-uptime-monitor'), current_time('mysql'));
 
-	// Add performance data if available
-	if ($site->response_time !== null) {
+	// Add performance data if available (Pro feature)
+	if ( lukstack_can_use_performance_tracking() && $site->response_time !== null ) {
 		$lines[] = sprintf(__('Response Time: %s ms', 'lukstack-uptime-monitor'), number_format($site->response_time, 0));
 	}
 
-	// Add SSL info if available
-	if ($site->ssl_days_remaining !== null) {
+	// Add SSL info if available (Pro feature)
+	if ( lukstack_can_use_ssl_monitoring() && $site->ssl_days_remaining !== null ) {
 		$lines[] = sprintf(__('SSL Days Remaining: %d days', 'lukstack-uptime-monitor'), $site->ssl_days_remaining);
 	}
 
@@ -161,6 +161,11 @@ function lukstack_send_webhook_alert($id, $url, $old_status, $new_status, $sever
 add_action('lukstack_ssl_expiring_soon', 'lukstack_handle_ssl_expiring', 10, 3);
 
 function lukstack_handle_ssl_expiring($id, $url, $days_remaining) {
+	// SSL monitoring is a Pro feature.
+	if ( ! lukstack_can_use_ssl_monitoring() ) {
+		return;
+	}
+
 	// Validate inputs
 	if (empty($id) || empty($url) || !is_numeric($days_remaining)) {
 		lukstack_log('Invalid parameters for SSL expiring alert', 'error');

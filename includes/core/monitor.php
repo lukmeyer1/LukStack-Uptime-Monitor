@@ -79,8 +79,8 @@ function lukstack_check_website($url) {
 			$result['error_message'] = 'Unknown HTTP code: ' . $code;
 		}
 
-		// Get SSL certificate info for HTTPS sites
-		if (lukstack_is_https($url)) {
+		// Get SSL certificate info for HTTPS sites (Pro feature)
+		if ( lukstack_can_use_ssl_monitoring() && lukstack_is_https($url)) {
 			$ssl_data = lukstack_get_ssl_info($url);
 			if ($ssl_data && !is_wp_error($ssl_data)) {
 				$result['ssl_expiry_date'] = $ssl_data['expiry_date'];

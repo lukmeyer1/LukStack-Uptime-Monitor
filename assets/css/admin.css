@@ -398,6 +398,42 @@
 }
 
 /* ============================
+   Status Chips (compact, no dot)
+   Used for inline state indicators like Freemius connect status
+   in the Settings page. Visually consistent with .lukstack-badge
+   but tighter — designed to sit next to flowing text.
+   ============================ */
+.lukstack-chip {
+	display: inline-block;
+	padding: 2px 10px;
+	border-radius: 3px;
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.3px;
+	line-height: 1.6;
+	vertical-align: baseline;
+	white-space: nowrap;
+}
+
+.lukstack-chip--success {
+	background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+	color: #065f46;
+	border: 1px solid #6ee7b7;
+}
+
+.lukstack-chip--warning {
+	background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+	color: #92400e;
+	border: 1px solid #fcd34d;
+}
+
+.lukstack-chip--info {
+	background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+	color: #1e3a8a;
+	border: 1px solid #93c5fd;
+}
+
+/* ============================
    Statistics Cards
    ============================ */
 .lukstack-stats {
@@ -1031,4 +1067,54 @@
 	.lukstack-help-card:nth-child(2) {
 		grid-column: span 2;
 	}
+}
+
+/* ============================
+   Plan / Pro Badge
+   ============================ */
+.lukstack-pro-badge {
+	display: inline-block;
+	background: var(--primary-color);
+	color: white;
+	font-size: 10px;
+	font-weight: 600;
+	padding: 2px 6px;
+	border-radius: 3px;
+	text-transform: uppercase;
+	vertical-align: middle;
+	margin-left: 4px;
+}
+
+/* ============================
+   Plan Info Bar
+   ============================ */
+.lukstack-plan-info {
+	background: var(--gray-50);
+	padding: 8px 16px;
+	border-radius: var(--border-radius-sm);
+	font-size: 13px;
+	color: var(--gray-600);
+	margin-bottom: 12px;
+	border: 1px solid var(--gray-200);
+}
+
+.lukstack-plan-info a {
+	color: var(--primary-color);
+	text-decoration: none;
+	font-weight: 500;
+}
+
+.lukstack-plan-info a:hover {
+	text-decoration: underline;
+}
+
+/* ============================
+   Upgrade Notice
+   ============================ */
+.lukstack-upgrade-notice {
+	background: linear-gradient(135deg, #eff6ff, #f5f3ff);
+	border: 1px solid #c7d2fe;
+	border-radius: var(--border-radius);
+	padding: var(--spacing-md) var(--spacing-lg);
+	margin-bottom: var(--spacing-md);
 }

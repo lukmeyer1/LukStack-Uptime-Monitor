@@ -242,7 +242,8 @@ function lukstack_sanitize_settings($settings) {
 
 	if (isset($settings['check_interval'])) {
 		$interval = intval($settings['check_interval']);
-		$sanitized['check_interval'] = max(5, min(60, $interval));
+		$min_interval = lukstack_get_plan_check_interval();
+		$sanitized['check_interval'] = max( $min_interval, min( 60, $interval ) );
 	}
 
 	if (isset($settings['notification_cooldown'])) {

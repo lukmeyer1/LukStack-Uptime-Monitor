@@ -58,8 +58,8 @@ function lukstack_dashboard_widget_content() {
 	$show_count = isset( $options['show_count'] ) ? intval( $options['show_count'] ) : 5;
 	$show_ssl   = isset( $options['show_ssl'] ) ? (bool) $options['show_ssl'] : true;
 
-	// SSL monitoring is always available (no plan gating).
-	$ssl_monitoring_available = true;
+	// SSL monitoring availability depends on plan.
+	$ssl_monitoring_available = lukstack_can_use_ssl_monitoring();
 
 	?>
 	<style>
@@ -384,7 +384,7 @@ function lukstack_dashboard_widget_content() {
 					printf(
 						/* translators: %s: Human-readable time difference */
 						esc_html__( 'Last check: %s ago', 'lukstack-uptime-monitor' ),
-						esc_html( human_time_diff( $timestamp, current_time( 'timestamp' ) ) )
+						esc_html( human_time_diff( $timestamp, time() ) )
 					);
 					?>
 				</span>

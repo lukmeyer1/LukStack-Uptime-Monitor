@@ -65,8 +65,10 @@ function lukstack_schedule_cron() {
 	// Clear existing schedule first.
 	lukstack_clear_cron();
 
-	// Get check interval from settings.
-	$interval = lukstack_get_setting( 'check_interval', LUKSTACK_DEFAULT_CHECK_INTERVAL );
+	// The plan dictates the interval. A stale check_interval left over from a
+	// previous plan (e.g. 15 after a Free → Pro upgrade) used to win through
+	// max(settings, plan), keeping Pro users on the Free-tier cadence.
+	$interval = lukstack_get_plan_check_interval();
 
 	// Determine schedule name based on interval.
 	$schedule = 'five_minutes'; // Default.
@@ -130,8 +132,8 @@ function lukstack_run_checks() {
 	}
 
 	try {
-		// Get settings.
-		$check_interval = lukstack_get_setting( 'check_interval', LUKSTACK_DEFAULT_CHECK_INTERVAL );
+		// Plan is the source of truth for the check interval — see lukstack_schedule_cron().
+		$check_interval = lukstack_get_plan_check_interval();
 
 		// Calculate batch size based on check interval (smallest first).
 		$batch_size = LUKSTACK_BATCH_SIZE_DEFAULT;
@@ -430,52 +432,42 @@ function lukstack_cron_status_notice() {
 		return;
 	}
 
-	// Check if WP Cron is disabled.
-	if ( defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON ) {
-		// If cron event is still scheduled, external cron is handling it - show info, not warning.
-		if ( wp_next_scheduled( 'lukstack_cron_event' ) ) {
-			?>
-			<div class="notice notice-info is-dismissible">
-				<p>
-					<strong><?php esc_html_e( 'LukStack Uptime Monitor:', 'lukstack-uptime-monitor' ); ?></strong>
-					<?php esc_html_e( 'WordPress Cron is disabled. Monitoring runs via external cron job (recommended).', 'lukstack-uptime-monitor' ); ?>
-				</p>
-			</div>
-			<?php
-		} else {
-			?>
-			<div class="notice notice-warning">
-				<p>
-					<strong><?php esc_html_e( 'LukStack Uptime Monitor Warning:', 'lukstack-uptime-monitor' ); ?></strong>
-					<?php esc_html_e( 'WordPress Cron is disabled and no monitoring check is scheduled. Please set up an external cron job.', 'lukstack-uptime-monitor' ); ?>
-					<a href="<?php echo esc_url( lukstack_admin_url( 'help' ) ); ?>">
-						<?php esc_html_e( 'Learn more', 'lukstack-uptime-monitor' ); ?>
-					</a>
-				</p>
-			</div>
-			<?php
-		}
+	// Determine whether the remote cron server is registered and active.
+	// Since 2.2.0 the remote cron is the primary trigger mechanism;
+	// WordPress Cron only acts as a fallback. Notices should reflect that.
+	$registration  = function_exists( 'lukstack_get_registration_status' ) ? lukstack_get_registration_status() : array();
+	$is_registered = isset( $registration['status'] ) && 'registered' === $registration['status'];
+
+	// Always make sure the WP Cron fallback stays scheduled in the background,
+	// but only nag the admin when BOTH trigger mechanisms are down.
+	if ( ! wp_next_scheduled( 'lukstack_cron_event' ) ) {
+		lukstack_schedule_cron();
 	}
 
-	// Check if cron is scheduled - if not, reschedule it.
-	if ( ! wp_next_scheduled( 'lukstack_cron_event' ) ) {
-		// Attempt to reschedule.
-		lukstack_schedule_cron();
+	$wp_cron_off      = defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON;
+	$wp_cron_unsched  = ! wp_next_scheduled( 'lukstack_cron_event' );
+	$wp_cron_inactive = $wp_cron_off || $wp_cron_unsched;
 
-		// Check again if it was successfully scheduled.
-		if ( ! wp_next_scheduled( 'lukstack_cron_event' ) ) {
-			?>
-			<div class="notice notice-error">
-				<p>
-					<strong><?php esc_html_e( 'LukStack Uptime Monitor Error:', 'lukstack-uptime-monitor' ); ?></strong>
-					<?php esc_html_e( 'Monitoring cron is not scheduled. Automatic checks are disabled.', 'lukstack-uptime-monitor' ); ?>
-					<a href="#" onclick="location.reload(); return false;">
-						<?php esc_html_e( 'Reload page to fix', 'lukstack-uptime-monitor' ); ?>
-					</a>
-				</p>
-			</div>
-			<?php
-		}
+	// If the remote cron is registered, monitoring runs via AWS every minute.
+	// No admin notice is needed — the settings page shows the registration
+	// status in detail for anyone who wants to look.
+	if ( $is_registered ) {
+		return;
+	}
+
+	// Remote cron is NOT registered. Fall back to WordPress Cron messaging.
+	if ( $wp_cron_inactive ) {
+		?>
+		<div class="notice notice-warning">
+			<p>
+				<strong><?php esc_html_e( 'LukStack Uptime Monitor Warning:', 'lukstack-uptime-monitor' ); ?></strong>
+				<?php esc_html_e( 'The remote cron server is not registered and the WordPress Cron fallback is unavailable. Automatic monitoring checks will not run until at least one trigger mechanism is restored.', 'lukstack-uptime-monitor' ); ?>
+				<a href="<?php echo esc_url( lukstack_admin_url( 'settings' ) ); ?>">
+					<?php esc_html_e( 'Open settings to re-register', 'lukstack-uptime-monitor' ); ?>
+				</a>
+			</p>
+		</div>
+		<?php
 	}
 }
 

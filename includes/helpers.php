@@ -134,6 +134,12 @@ function lukstack_get_email_headers() {
  * @return void
  */
 function lukstack_log($message, $level = 'info') {
+	// Warnings and errors are always logged. Info-level messages flood production
+	// error logs on busy sites, so we gate them behind WP_DEBUG.
+	if ($level === 'info' && !(defined('WP_DEBUG') && WP_DEBUG)) {
+		return;
+	}
+
 	if (!LUKSTACK_ENABLE_LOGGING && $level === 'info') {
 		return;
 	}
@@ -341,6 +347,47 @@ function lukstack_set_transient($key, $value, $expiration) {
  */
 function lukstack_delete_transient($key) {
 	return delete_transient(lukstack_transient_key($key));
+}
+
+/**
+ * Build the telemetry payload sent to the LukStack cron server alongside
+ * registration and trigger responses.
+ *
+ * Used to bridge the visibility gap between DynamoDB installs and Freemius
+ * users: anonymous installs (Freemius opt-in skipped) are otherwise invisible
+ * in funnel analytics. PII (admin email, IP) is deliberately excluded —
+ * `freemius_user_id` is only included when the user has actively opted in via
+ * the Freemius dialog.
+ *
+ * @since 2.3.0
+ *
+ * @return array Telemetry fields.
+ */
+function lukstack_get_telemetry_payload() {
+	global $wp_version;
+
+	$payload = array(
+		'freemius_status' => function_exists( 'lukstack_get_freemius_status' ) ? lukstack_get_freemius_status() : 'unknown',
+		'installed_at'    => (int) get_option( 'lukstack_installed_at', 0 ),
+		'wp_version'      => isset( $wp_version ) ? (string) $wp_version : '',
+		'php_version'     => PHP_VERSION,
+		'locale'          => get_locale(),
+		'multisite'       => is_multisite(),
+	);
+
+	if ( function_exists( 'lukstack_get_stats' ) ) {
+		$stats = lukstack_get_stats();
+		$payload['site_count'] = isset( $stats['total'] ) ? (int) $stats['total'] : 0;
+	}
+
+	if ( function_exists( 'lukstack_get_freemius_user_id' ) ) {
+		$user_id = lukstack_get_freemius_user_id();
+		if ( null !== $user_id ) {
+			$payload['freemius_user_id'] = $user_id;
+		}
+	}
+
+	return $payload;
 }
 
 /**

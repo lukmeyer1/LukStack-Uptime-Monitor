@@ -57,11 +57,11 @@ jQuery(function($) {
 		}
 
 		if (xhr.status === 0) {
-			return 'No connection - check your internet';
+			return i18n.noConnection || 'No connection - check your internet';
 		}
 
 		if (xhr.status >= 500) {
-			return 'Server error - please try again';
+			return i18n.serverError || 'Server error - please try again';
 		}
 
 		return i18n.networkError || 'Network error - please try again';
@@ -131,14 +131,14 @@ jQuery(function($) {
 		// Validate URL format
 		if (!url) {
 			e.preventDefault();
-			showToast('Please enter a URL', 'error');
+			showToast(i18n.enterUrl || 'Please enter a URL', 'error');
 			$urlInput.addClass('error').focus();
 			return false;
 		}
 
 		if (!url.match(/^https?:\/\//i)) {
 			e.preventDefault();
-			showToast('URL must start with http:// or https://', 'error');
+			showToast(i18n.invalidUrl || 'URL must start with http:// or https://', 'error');
 			$urlInput.addClass('error').focus();
 			return false;
 		}
@@ -146,7 +146,7 @@ jQuery(function($) {
 		// Validate email if provided
 		if (email && !email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
 			e.preventDefault();
-			showToast('Please enter a valid email address', 'error');
+			showToast(i18n.invalidEmail || 'Please enter a valid email address', 'error');
 			$emailInput.addClass('error').focus();
 			return false;
 		}
@@ -207,7 +207,7 @@ jQuery(function($) {
 						.removeClass('loading')
 						.addClass('button-primary');
 
-					showToast(response.data.message || 'Website checked successfully!', 'success');
+					showToast(response.data.message || (i18n.success || 'Success!'), 'success');
 
 					setTimeout(() => {
 						$btn.text(originalText)
@@ -215,7 +215,7 @@ jQuery(function($) {
 							.prop('disabled', false);
 					}, 2000);
 				} else {
-					showToast('Error: ' + (response.data?.message || 'Unknown error'), 'error');
+					showToast((i18n.error || 'Error') + ': ' + (response.data?.message || i18n.networkError || 'Unknown error'), 'error');
 					resetButton($btn, originalText);
 				}
 			})
@@ -267,9 +267,9 @@ jQuery(function($) {
 						}
 					});
 
-					showToast(response.data?.message || 'Website deleted successfully', 'success');
+					showToast(response.data?.message || (i18n.success || 'Success!'), 'success');
 				} else {
-					showToast('Error: ' + (response.data?.message || 'Could not delete website'), 'error');
+					showToast((i18n.error || 'Error') + ': ' + (response.data?.message || i18n.networkError || 'Unknown error'), 'error');
 					$row.find('button').prop('disabled', false);
 					$btn.text(originalText).removeClass('loading');
 				}
@@ -312,7 +312,7 @@ jQuery(function($) {
 					showToast(response.data.message, 'success');
 					setTimeout(() => location.reload(), 1500);
 				} else {
-					showToast('Error: ' + (response.data?.message || 'Unknown error'), 'error');
+					showToast((i18n.error || 'Error') + ': ' + (response.data?.message || i18n.networkError || 'Unknown error'), 'error');
 				}
 			})
 			.fail(function(xhr, status, error) {
@@ -355,8 +355,8 @@ jQuery(function($) {
 
 			if (navigator.clipboard && navigator.clipboard.writeText) {
 				navigator.clipboard.writeText(url)
-					.then(() => showToast('URL copied to clipboard!', 'success'))
-					.catch(() => showToast('Could not copy URL', 'error'));
+					.then(() => showToast(i18n.urlCopied || 'URL copied to clipboard!', 'success'))
+					.catch(() => showToast(i18n.copyFailed || 'Could not copy URL', 'error'));
 			}
 		}
 	});

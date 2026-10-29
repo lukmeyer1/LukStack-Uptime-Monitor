@@ -34,6 +34,25 @@ function lukstack_settings_page() {
 		}
 	}
 
+	// Handle "Force re-register" button (debug only).
+	if ( isset( $_POST['lukstack_force_register'] ) && defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+		if ( ! check_admin_referer( 'lukstack_force_register' ) ) {
+			$error_message = __( 'Security check failed. Please try again.', 'lukstack-uptime-monitor' );
+		} elseif ( function_exists( 'lukstack_register_with_cron_server' ) ) {
+			$registered = lukstack_register_with_cron_server();
+			if ( $registered ) {
+				$success_message = __( 'Re-registration successful.', 'lukstack-uptime-monitor' );
+			} else {
+				$status = lukstack_get_registration_status();
+				$error_message = sprintf(
+					/* translators: %s: error details */
+					__( 'Re-registration failed: %s', 'lukstack-uptime-monitor' ),
+					isset( $status['error'] ) ? $status['error'] : 'unknown error'
+				);
+			}
+		}
+	}
+
 	// Get current settings
 	$webhook_url = lukstack_get_setting('webhook_url');
 
@@ -72,7 +91,7 @@ function lukstack_process_settings_form() {
 	// Prepare new settings
 	$new_settings = array(
 		'webhook_url' => $webhook_url,
-		'check_interval' => LUKSTACK_DEFAULT_CHECK_INTERVAL,
+		'check_interval' => lukstack_get_plan_check_interval(),
 		'notification_cooldown' => LUKSTACK_DEFAULT_COOLDOWN,
 		'version' => LUKSTACK_VERSION
 	);

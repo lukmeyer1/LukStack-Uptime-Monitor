@@ -69,7 +69,7 @@ define('LUKSTACK_WEBHOOK_MAX_LENGTH', 500);
 /**
  * Default Settings
  */
-define('LUKSTACK_DEFAULT_CHECK_INTERVAL', 5);      // minutes
+define('LUKSTACK_DEFAULT_CHECK_INTERVAL', 15);     // minutes (free plan default)
 define('LUKSTACK_DEFAULT_COOLDOWN', 24);           // hours
 define('LUKSTACK_DEFAULT_NOTIFICATION_DELAY', DAY_IN_SECONDS);
 

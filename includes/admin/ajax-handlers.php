@@ -60,15 +60,19 @@ function lukstack_ajax_check_now() {
 	}
 
 	wp_send_json_success(array(
-		'status' => $check_result['status'],
-		'response_time' => $check_result['response_time'],
+		'status'             => $check_result['status'],
+		'response_time'      => $check_result['response_time'],
 		'ssl_days_remaining' => $check_result['ssl_days_remaining'],
-		'ssl_expiry_date' => $check_result['ssl_expiry_date'],
-		'checked' => current_time('mysql'),
-		'status_html' => lukstack_render_status($check_result['status']),
-		'response_time_html' => lukstack_render_response_time($check_result['response_time']),
-		'ssl_html' => lukstack_render_ssl_expiry($check_result['ssl_days_remaining'], $check_result['ssl_expiry_date']),
-		'message' => __('Website checked successfully!', 'lukstack-uptime-monitor')
+		'ssl_expiry_date'    => $check_result['ssl_expiry_date'],
+		'checked'            => current_time('mysql'),
+		'status_html'        => lukstack_render_status( $check_result['status'] ),
+		'response_time_html' => lukstack_can_use_performance_tracking()
+			? lukstack_render_response_time( $check_result['response_time'] )
+			: '',
+		'ssl_html'           => lukstack_can_use_ssl_monitoring()
+			? lukstack_render_ssl_expiry( $check_result['ssl_days_remaining'], $check_result['ssl_expiry_date'] )
+			: '',
+		'message'            => __( 'Website checked successfully!', 'lukstack-uptime-monitor' ),
 	));
 }
 
